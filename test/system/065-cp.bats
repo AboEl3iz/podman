@@ -1104,4 +1104,22 @@ load helpers
     run_podman rm -f -t0 $ctrsrc $ctrdest
 }
 
+# https://github.com/containers/podman/issues/29805
+@test "podman cp archive through absolute symlink (#29805)" {
+    local cname="c-$(safename)"
+    run_podman run -d --name=$cname --rm $IMAGE sh -c "mkdir -p /run/act; ln -s /run /var/run; echo READY; sleep infinity"
+    wait_for_ready $cname
+
+    srcdir=$PODMAN_TMPDIR/cp-symlink-test
+    mkdir -p $srcdir
+    echo "hello symlink" > $srcdir/x
+
+    tar -C $srcdir --transform 's,^x,var/run/act/x,' -cf - x | run_podman cp - $cname:/
+
+    run_podman exec $cname cat /run/act/x
+    assert "$output" = "hello symlink" "archive copied through /var/run symlink lands in /run/act/x"
+
+    run_podman rm -f -t0 $cname
+}
+
 # vim: filetype=sh

@@ -2144,7 +2144,11 @@ func copierHandlerPut(bulkReader io.Reader, req request, idMappings *idtools.IDM
 			}
 			// make sure the parent directory exists, including for tar.TypeXGlobalHeader entries
 			// that we otherwise ignore, because that's what docker build does with them
-			path := filepath.Join(targetDirectory, cleanerReldirectory(filepath.FromSlash(hdr.Name)))
+			rawPath := filepath.Join(targetDirectory, cleanerReldirectory(filepath.FromSlash(hdr.Name)))
+			path, err := resolvePath(targetDirectory, rawPath, hdr.Typeflag == tar.TypeDir, nil)
+			if err != nil {
+				return fmt.Errorf("copier: put: error resolving path %q: %w", hdr.Name, err)
+			}
 			if err := ensureDirectoryUnderRoot(filepath.Dir(path)); err != nil {
 				return err
 			}
